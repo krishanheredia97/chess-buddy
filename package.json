@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js && echo 'Watching for changes...' && npx tsc --watch",
+    "watch": "npx tsc --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

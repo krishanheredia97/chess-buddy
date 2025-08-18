@@ -4,3 +4,8 @@ node_modules
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Chrome Extension build files
+dist/
+dist-extension/
+popup.js
