@@ -1,15 +1,22 @@
 {
   "manifest_version": 3,
-  "name": "My First Extension",
+  "name": "Chess Time Control Blocker",
   "version": "1.0.0",
-  "description": "A simple Chrome extension built with TypeScript",
+  "description": "Blocks specific time control buttons on Chess.com to prevent blitz addiction",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "My Extension"
+    "default_title": "Chess Time Control Blocker"
   },
   "permissions": ["activeTab", "tabs", "scripting"],
   "host_permissions": [
     "https://*.chess.com/*",
     "http://*.chess.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://*.chess.com/*", "http://*.chess.com/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_end"
+    }
   ]
 }

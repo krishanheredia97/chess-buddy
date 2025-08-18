@@ -24,6 +24,15 @@ function build() {
     fs.copyFileSync('src/popup.html', 'dist-extension/popup.html');
   }
   
+  // Copy compiled JavaScript files
+  console.log('Copying compiled JavaScript files...');
+  if (fs.existsSync('src/popup.js')) {
+    fs.copyFileSync('src/popup.js', 'dist-extension/popup.js');
+  }
+  if (fs.existsSync('src/content-script.js')) {
+    fs.copyFileSync('src/content-script.js', 'dist-extension/content-script.js');
+  }
+  
   // Copy manifest
   console.log('Copying manifest...');
   if (fs.existsSync('src/manifest.json')) {

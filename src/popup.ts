@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (hostname === 'chess.com' || hostname.endsWith('.chess.com')) {
-      setMessage("You're in Chess.com!", '#2e7d32');
+      setMessage("You're on Chess.com! Time control buttons (3 min, 3|2, 5 min) are now hidden.", '#2e7d32');
       console.log('Chess.com detected!');
     } else {
       setMessage(`You're not on Chess.com (currently on: ${hostname})`, '#666');
