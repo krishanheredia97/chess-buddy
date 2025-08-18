@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>My Extension</title>
+  <title>Chess Extension</title>
   <style>
     body {
       width: 300px;
@@ -21,17 +21,27 @@
     h1 {
       color: #333;
       margin-bottom: 10px;
+      font-size: 18px;
     }
     p {
       color: #666;
       margin: 0;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .chess-detected {
+      color: #2e7d32 !important;
+      font-weight: bold;
+    }
+    .error {
+      color: #d32f2f !important;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>My Extension!</h1>
-    <p id="message">This is my extension!</p>
+    <h1>Chess Extension</h1>
+    <p id="message">Checking current page...</p>
   </div>
   <script src="popup.js"></script>
 </body>
