@@ -10,7 +10,8 @@ function hideTimeControlButtons() {
     const buttonText = button.textContent?.trim();
     
     // Check if the button text matches our criteria
-    if (buttonText === '3 min' || buttonText === '3 | 2' || buttonText === '5 min') {
+    if (buttonText === '1 min' || buttonText === '1 | 1' || buttonText === '2 | 1' || 
+        buttonText === '3 min' || buttonText === '3 | 2' || buttonText === '5 min') {
       console.log(`Hiding time control button: "${buttonText}"`);
       
       // Hide the button by setting display to none

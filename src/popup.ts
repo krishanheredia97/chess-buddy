@@ -92,8 +92,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (hostname === 'chess.com' || hostname.endsWith('.chess.com')) {
-      setMessage("You're on Chess.com! Time control buttons (3 min, 3|2, 5 min) are now hidden.", '#2e7d32');
+      setMessage("You're on Chess.com! Time control buttons (1 min, 1|1, 2|1, 3 min, 3|2, 5 min) are now hidden.", '#2e7d32');
       console.log('Chess.com detected!');
+      
+      // Check for the specific class on the page
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id! },
+          func: () => {
+            const element = document.querySelector('.country-flags-component.country-75.country-flags-small');
+            return element ? 'IT EXISTS' : 'NOT FOUND';
+          }
+        });
+        
+        if (results && results[0] && results[0].result === 'IT EXISTS') {
+          setMessage("You're on Chess.com! Time control buttons hidden. IT EXISTS", '#2e7d32');
+        }
+      } catch (scriptError) {
+        console.warn('Could not check for specific class:', scriptError);
+      }
     } else {
       setMessage(`You're not on Chess.com (currently on: ${hostname})`, '#666');
       console.log('Not on chess.com, current hostname:', hostname);
