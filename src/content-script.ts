@@ -24,10 +24,60 @@ function hideTimeControlButtons() {
   });
 }
 
+// Function to block chess board when the specific flag class exists
+function blockChessBoard() {
+  const flagExists = !!document.querySelector('.country-flags-component.country-75.country-flags-small');
+  const boardElement = document.querySelector('#board-single') as HTMLElement | null;
+  const existingOverlay = document.getElementById('chess-blocker-overlay') as HTMLDivElement | null;
+
+  if (!flagExists || !boardElement) {
+    if (existingOverlay) existingOverlay.remove();
+    return;
+  }
+
+  let overlay = existingOverlay;
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'chess-blocker-overlay';
+    overlay.style.position = 'fixed';
+    overlay.style.background = '#000';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.textAlign = 'center';
+    overlay.style.color = 'red';
+    overlay.style.font = 'bold 28px Arial, sans-serif';
+    overlay.style.zIndex = '2147483647';
+    overlay.style.pointerEvents = 'all';
+    overlay.style.userSelect = 'none';
+    overlay.style.cursor = 'not-allowed';
+    overlay.textContent = 'Are you sure you want to continue with this match?';
+    document.body.appendChild(overlay);
+  }
+
+  const positionOverlay = () => {
+    const rect = boardElement.getBoundingClientRect();
+    overlay!.style.left = rect.left + 'px';
+    overlay!.style.top = rect.top + 'px';
+    overlay!.style.width = rect.width + 'px';
+    overlay!.style.height = rect.height + 'px';
+  };
+
+  positionOverlay();
+
+  if (!overlay.dataset.posListeners) {
+    const handler = () => positionOverlay();
+    window.addEventListener('resize', handler, { passive: true });
+    window.addEventListener('scroll', handler, { passive: true });
+    overlay.dataset.posListeners = 'true';
+  }
+}
+
 // Function to continuously monitor for new buttons (in case they're added dynamically)
 function startMonitoring() {
   // Initial check
   hideTimeControlButtons();
+  blockChessBoard();
   
   // Set up a mutation observer to watch for new elements being added
   const observer = new MutationObserver((mutations) => {
@@ -43,6 +93,14 @@ function startMonitoring() {
             } else if (element.querySelector?.('.time-selector-button-button')) {
               hideTimeControlButtons();
             }
+            
+            // Also check for flag element or chess board
+            if (element.classList?.contains('country-flags-component') || 
+                element.querySelector?.('.country-flags-component') ||
+                element.tagName === 'WC-CHESS-BOARD' ||
+                element.querySelector?.('wc-chess-board')) {
+              blockChessBoard();
+            }
           }
         });
       }
@@ -56,7 +114,10 @@ function startMonitoring() {
   });
   
   // Also check periodically in case the observer misses something
-  setInterval(hideTimeControlButtons, 2000);
+  setInterval(() => {
+    hideTimeControlButtons();
+    blockChessBoard();
+  }, 2000);
 }
 
 // Start monitoring when the DOM is ready
