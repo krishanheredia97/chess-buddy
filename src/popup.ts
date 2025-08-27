@@ -182,12 +182,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Handle reset stats button
   resetStatsBtn.addEventListener('click', async () => {
     try {
-      const confirmed = confirm('Are you sure you want to reset your game statistics? This cannot be undone.');
-      if (confirmed) {
-        await chrome.storage.sync.set({ gameStats: { wins: 0, losses: 0 } });
-        await loadStats(); // Refresh display
-        console.log('Game statistics reset');
-      }
+      await chrome.storage.sync.set({ gameStats: { wins: 0, losses: 0 } });
+      await loadStats(); // Refresh display
+      console.log('Game statistics reset');
     } catch (error) {
       console.error('Error resetting stats:', error);
     }

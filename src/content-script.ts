@@ -12,14 +12,39 @@ async function isButtonHidingEnabled(): Promise<boolean> {
   }
 }
 
-// Track game results
+// Track game results with improved logic
 let gameResultProcessed = false;
+
+// Check for resign button icon to determine if game is active
+async function checkResignIcon() {
+  const resignIcon = document.querySelector('.resign-button-icon');
+  
+  try {
+    const result = await chrome.storage.local.get(['hasResignIconAppeared']);
+    const hasAppeared = result.hasResignIconAppeared || false;
+    
+    if (resignIcon && !hasAppeared) {
+      // Resign icon appeared for the first time
+      await chrome.storage.local.set({ hasResignIconAppeared: true });
+      console.log('Resign icon detected - game is active');
+    } else if (!resignIcon && hasAppeared) {
+      // Game ended, reset for next game
+      await chrome.storage.local.set({ 
+        hasResignIconAppeared: false,
+        hasGameOverHeaderAppeared: false 
+      });
+      gameResultProcessed = false;
+      console.log('Game ended - reset tracking flags');
+    }
+  } catch (error) {
+    console.error('Error checking resign icon:', error);
+  }
+}
 
 async function checkGameResult() {
   const gameOverHeader = document.querySelector('.game-over-header-header');
   
   if (!gameOverHeader) {
-    gameResultProcessed = false; // Reset when no game over screen
     return;
   }
 
@@ -38,12 +63,32 @@ async function checkGameResult() {
     return;
   }
 
-  console.log('Game result detected:', resultText);
+  console.log('Game over header detected:', resultText);
 
   try {
-    // Get current stats
-    const result = await chrome.storage.sync.get(['gameStats']);
-    const currentStats = result.gameStats || { wins: 0, losses: 0 };
+    // Mark that game over header has appeared
+    await chrome.storage.local.set({ hasGameOverHeaderAppeared: true });
+    
+    // Check if both conditions are met (resign icon appeared AND game over header appeared)
+    const result = await chrome.storage.local.get(['hasResignIconAppeared', 'hasGameOverHeaderAppeared']);
+    const hasResignIcon = result.hasResignIconAppeared || false;
+    const hasGameOverHeader = result.hasGameOverHeaderAppeared || false;
+    
+    if (!hasResignIcon || !hasGameOverHeader) {
+      console.log('Game result ignored - not an active game (resign icon never appeared)');
+      return;
+    }
+    
+    // Skip counting if game was aborted
+    if (resultText === 'Game Aborted') {
+      console.log('Game aborted - not counting as win or loss');
+      gameResultProcessed = true;
+      return;
+    }
+
+    // Get current stats and update
+    const statsResult = await chrome.storage.sync.get(['gameStats']);
+    const currentStats = statsResult.gameStats || { wins: 0, losses: 0 };
 
     // Update stats based on result
     if (resultText === 'You Won!') {
@@ -56,7 +101,7 @@ async function checkGameResult() {
 
     // Save updated stats
     await chrome.storage.sync.set({ gameStats: currentStats });
-    gameResultProcessed = true; // Mark as processed
+    gameResultProcessed = true;
     
     console.log('Game stats updated:', currentStats);
   } catch (error) {
@@ -150,6 +195,7 @@ async function startMonitoring() {
   // Initial check
   await hideTimeControlButtons();
   blockChessBoard();
+  await checkResignIcon();
   await checkGameResult();
   
   // Set up a mutation observer to watch for new elements being added
@@ -175,6 +221,12 @@ async function startMonitoring() {
               blockChessBoard();
             }
 
+            // Check for resign button icon
+            if (element.classList?.contains('resign-button-icon') ||
+                element.querySelector?.('.resign-button-icon')) {
+              checkResignIcon();
+            }
+
             // Check for game over elements
             if (element.classList?.contains('game-over-header-header') ||
                 element.querySelector?.('.game-over-header-header')) {
@@ -196,6 +248,7 @@ async function startMonitoring() {
   setInterval(async () => {
     await hideTimeControlButtons();
     blockChessBoard();
+    await checkResignIcon();
     await checkGameResult();
   }, 2000);
 }
