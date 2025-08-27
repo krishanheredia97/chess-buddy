@@ -2,6 +2,9 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const messageElement = document.getElementById('message');
   const toggleSwitch = document.getElementById('toggleSwitch');
+  const winsCountElement = document.getElementById('winsCount');
+  const lossesCountElement = document.getElementById('lossesCount');
+  const resetStatsBtn = document.getElementById('resetStatsBtn');
   
   if (!messageElement) {
     console.error('Message element not found!');
@@ -10,6 +13,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (!toggleSwitch) {
     console.error('Toggle switch element not found!');
+    return;
+  }
+
+  if (!winsCountElement || !lossesCountElement || !resetStatsBtn) {
+    console.error('Stats elements not found!');
     return;
   }
 
@@ -110,6 +118,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     setMessage(`Error: ${errorMessage}`, '#d32f2f');
   }
 
+  // Load and display game statistics
+  const loadStats = async () => {
+    try {
+      const result = await chrome.storage.sync.get(['gameStats']);
+      const stats = result.gameStats || { wins: 0, losses: 0 };
+      
+      winsCountElement.textContent = stats.wins.toString();
+      lossesCountElement.textContent = stats.losses.toString();
+    } catch (error) {
+      console.error('Error loading game stats:', error);
+    }
+  };
+
   // Initialize toggle state
   try {
     const result = await chrome.storage.sync.get(['hideTimeButtons']);
@@ -123,6 +144,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (error) {
     console.error('Error loading toggle state:', error);
   }
+
+  // Load initial stats
+  await loadStats();
 
   // Handle toggle click
   toggleSwitch.addEventListener('click', async () => {
@@ -152,6 +176,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } catch (error) {
       console.error('Error toggling setting:', error);
+    }
+  });
+
+  // Handle reset stats button
+  resetStatsBtn.addEventListener('click', async () => {
+    try {
+      const confirmed = confirm('Are you sure you want to reset your game statistics? This cannot be undone.');
+      if (confirmed) {
+        await chrome.storage.sync.set({ gameStats: { wins: 0, losses: 0 } });
+        await loadStats(); // Refresh display
+        console.log('Game statistics reset');
+      }
+    } catch (error) {
+      console.error('Error resetting stats:', error);
+    }
+  });
+
+  // Listen for storage changes to update stats in real-time
+  chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'sync' && changes.gameStats) {
+      const newStats = changes.gameStats.newValue || { wins: 0, losses: 0 };
+      winsCountElement.textContent = newStats.wins.toString();
+      lossesCountElement.textContent = newStats.losses.toString();
     }
   });
 });

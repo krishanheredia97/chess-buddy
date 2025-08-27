@@ -12,6 +12,58 @@ async function isButtonHidingEnabled(): Promise<boolean> {
   }
 }
 
+// Track game results
+let gameResultProcessed = false;
+
+async function checkGameResult() {
+  const gameOverHeader = document.querySelector('.game-over-header-header');
+  
+  if (!gameOverHeader) {
+    gameResultProcessed = false; // Reset when no game over screen
+    return;
+  }
+
+  // Avoid processing the same game result multiple times
+  if (gameResultProcessed) {
+    return;
+  }
+
+  const headerTitle = gameOverHeader.querySelector('.header-title-component');
+  if (!headerTitle) {
+    return;
+  }
+
+  const resultText = headerTitle.textContent?.trim();
+  if (!resultText) {
+    return;
+  }
+
+  console.log('Game result detected:', resultText);
+
+  try {
+    // Get current stats
+    const result = await chrome.storage.sync.get(['gameStats']);
+    const currentStats = result.gameStats || { wins: 0, losses: 0 };
+
+    // Update stats based on result
+    if (resultText === 'You Won!') {
+      currentStats.wins += 1;
+      console.log('Win recorded! Total wins:', currentStats.wins);
+    } else {
+      currentStats.losses += 1;
+      console.log('Loss recorded! Total losses:', currentStats.losses);
+    }
+
+    // Save updated stats
+    await chrome.storage.sync.set({ gameStats: currentStats });
+    gameResultProcessed = true; // Mark as processed
+    
+    console.log('Game stats updated:', currentStats);
+  } catch (error) {
+    console.error('Error updating game stats:', error);
+  }
+}
+
 // Function to hide time control buttons
 async function hideTimeControlButtons() {
   // Check if button hiding is enabled
@@ -98,6 +150,7 @@ async function startMonitoring() {
   // Initial check
   await hideTimeControlButtons();
   blockChessBoard();
+  await checkGameResult();
   
   // Set up a mutation observer to watch for new elements being added
   const observer = new MutationObserver((mutations) => {
@@ -121,6 +174,12 @@ async function startMonitoring() {
                 element.querySelector?.('wc-chess-board')) {
               blockChessBoard();
             }
+
+            // Check for game over elements
+            if (element.classList?.contains('game-over-header-header') ||
+                element.querySelector?.('.game-over-header-header')) {
+              checkGameResult();
+            }
           }
         });
       }
@@ -137,6 +196,7 @@ async function startMonitoring() {
   setInterval(async () => {
     await hideTimeControlButtons();
     blockChessBoard();
+    await checkGameResult();
   }, 2000);
 }
 
