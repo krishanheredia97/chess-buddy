@@ -7,7 +7,7 @@
     "default_popup": "popup.html",
     "default_title": "Chess Time Control Blocker"
   },
-  "permissions": ["activeTab", "tabs", "scripting"],
+  "permissions": ["activeTab", "tabs", "scripting", "storage"],
   "host_permissions": [
     "https://*.chess.com/*",
     "http://*.chess.com/*"

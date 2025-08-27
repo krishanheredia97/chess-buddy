@@ -1,8 +1,26 @@
 // Content script to hide specific time control buttons on Chess.com
 console.log('Chess.com content script loaded');
 
+// Check if button hiding is enabled
+async function isButtonHidingEnabled(): Promise<boolean> {
+  try {
+    const result = await chrome.storage.sync.get(['hideTimeButtons']);
+    return result.hideTimeButtons !== false; // Default to true if not set
+  } catch (error) {
+    console.log('Error checking button hiding setting:', error);
+    return true; // Default to enabled
+  }
+}
+
 // Function to hide time control buttons
-function hideTimeControlButtons() {
+async function hideTimeControlButtons() {
+  // Check if button hiding is enabled
+  const isEnabled = await isButtonHidingEnabled();
+  if (!isEnabled) {
+    console.log('Button hiding is disabled, skipping...');
+    return;
+  }
+
   // Find all time selector buttons
   const timeButtons = document.querySelectorAll('.time-selector-button-button');
   
@@ -10,8 +28,10 @@ function hideTimeControlButtons() {
     const buttonText = button.textContent?.trim();
     
     // Check if the button text matches our criteria
-    if (buttonText === '1 min' || buttonText === '1 | 1' || buttonText === '2 | 1' || 
-        buttonText === '3 min' || buttonText === '3 | 2' || buttonText === '5 min') {
+    if (buttonText === '30 sec' || buttonText === '20 sec | 1' || buttonText === '5 | 5' || 
+        buttonText === '5 | 2' || buttonText === '1 min' || buttonText === '1 | 1' || 
+        buttonText === '2 | 1' || buttonText === '3 min' || buttonText === '3 | 2' || 
+        buttonText === '5 min') {
       console.log(`Hiding time control button: "${buttonText}"`);
       
       // Hide the button by setting display to none
@@ -74,9 +94,9 @@ function blockChessBoard() {
 }
 
 // Function to continuously monitor for new buttons (in case they're added dynamically)
-function startMonitoring() {
+async function startMonitoring() {
   // Initial check
-  hideTimeControlButtons();
+  await hideTimeControlButtons();
   blockChessBoard();
   
   // Set up a mutation observer to watch for new elements being added
@@ -114,8 +134,8 @@ function startMonitoring() {
   });
   
   // Also check periodically in case the observer misses something
-  setInterval(() => {
-    hideTimeControlButtons();
+  setInterval(async () => {
+    await hideTimeControlButtons();
     blockChessBoard();
   }, 2000);
 }
@@ -129,3 +149,12 @@ if (document.readyState === 'loading') {
 
 // Also start monitoring immediately in case the script loads after DOMContentLoaded
 startMonitoring();
+
+// Listen for messages from popup
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'refreshButtonHiding') {
+    console.log('Received refresh request from popup');
+    hideTimeControlButtons();
+    sendResponse({ success: true });
+  }
+});

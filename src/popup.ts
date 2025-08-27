@@ -1,9 +1,15 @@
 // This file will be compiled to popup.js
 document.addEventListener('DOMContentLoaded', async () => {
   const messageElement = document.getElementById('message');
+  const toggleSwitch = document.getElementById('toggleSwitch');
   
   if (!messageElement) {
     console.error('Message element not found!');
+    return;
+  }
+
+  if (!toggleSwitch) {
+    console.error('Toggle switch element not found!');
     return;
   }
 
@@ -92,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (hostname === 'chess.com' || hostname.endsWith('.chess.com')) {
-      setMessage("You're on Chess.com! Time control buttons (1 min, 1|1, 2|1, 3 min, 3|2, 5 min) are now hidden.", '#2e7d32');
+      setMessage("You're on Chess.com! Extension is active.", '#2e7d32');
       console.log('Chess.com detected!');
     } else {
       setMessage(`You're not on Chess.com (currently on: ${hostname})`, '#666');
@@ -103,4 +109,49 @@ document.addEventListener('DOMContentLoaded', async () => {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     setMessage(`Error: ${errorMessage}`, '#d32f2f');
   }
+
+  // Initialize toggle state
+  try {
+    const result = await chrome.storage.sync.get(['hideTimeButtons']);
+    const isEnabled = result.hideTimeButtons !== false; // Default to true
+    
+    if (isEnabled) {
+      toggleSwitch.classList.add('active');
+    } else {
+      toggleSwitch.classList.remove('active');
+    }
+  } catch (error) {
+    console.error('Error loading toggle state:', error);
+  }
+
+  // Handle toggle click
+  toggleSwitch.addEventListener('click', async () => {
+    try {
+      const isCurrentlyActive = toggleSwitch.classList.contains('active');
+      const newState = !isCurrentlyActive;
+      
+      // Update UI immediately
+      if (newState) {
+        toggleSwitch.classList.add('active');
+      } else {
+        toggleSwitch.classList.remove('active');
+      }
+      
+      // Save to storage
+      await chrome.storage.sync.set({ hideTimeButtons: newState });
+      console.log('Toggle state saved:', newState);
+      
+      // Notify content script to refresh
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs[0]?.id) {
+        try {
+          await chrome.tabs.sendMessage(tabs[0].id, { action: 'refreshButtonHiding' });
+        } catch (msgError) {
+          console.log('Could not send message to content script (tab may not have the extension loaded)');
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling setting:', error);
+    }
+  });
 });
