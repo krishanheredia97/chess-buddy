@@ -96,7 +96,10 @@ async function checkGameResult() {
       console.log('Win recorded! Total wins:', currentStats.wins);
     } else {
       currentStats.losses += 1;
-      console.log('Loss recorded! Total losses:', currentStats.losses);
+      // Save timestamp of the loss
+      const lossTimestamp = Date.now();
+      await chrome.storage.sync.set({ lastLossTime: lossTimestamp });
+      console.log('Loss recorded! Total losses:', currentStats.losses, 'Time:', new Date(lossTimestamp));
     }
 
     // Save updated stats
@@ -141,13 +144,79 @@ async function hideTimeControlButtons() {
   });
 }
 
-// Function to block chess board when the specific flag class exists
-function blockChessBoard() {
+// Function to format time since last loss in a simple format
+function formatTimeSince(timestamp: number): string {
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 0) {
+    return `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+  } else if (diffHours > 0) {
+    return `${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+  } else if (diffMinutes > 0) {
+    return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''}`;
+  } else {
+    return `${diffSeconds} second${diffSeconds > 1 ? 's' : ''}`;
+  }
+}
+
+// Function to check if we should block due to recent loss
+async function shouldBlockDueToLoss(): Promise<{ shouldBlock: boolean; timeRemaining?: string; timeSinceLoss?: string }> {
+  try {
+    const result = await chrome.storage.sync.get(['lastLossTime']);
+    const lastLossTime = result.lastLossTime;
+    
+    if (!lastLossTime) {
+      return { shouldBlock: false };
+    }
+
+    const now = Date.now();
+    const timeSinceLoss = now - lastLossTime;
+    const tenMinutesMs = 10 * 60 * 1000; // 10 minutes in milliseconds
+    
+    const timeSinceFormatted = formatTimeSince(lastLossTime);
+    
+    if (timeSinceLoss < tenMinutesMs) {
+      const timeRemainingMs = tenMinutesMs - timeSinceLoss;
+      const timeRemainingSeconds = Math.ceil(timeRemainingMs / 1000);
+      const timeRemainingMinutes = Math.ceil(timeRemainingSeconds / 60);
+      
+      let timeRemainingFormatted: string;
+      if (timeRemainingMinutes > 1) {
+        timeRemainingFormatted = `${timeRemainingMinutes} minute${timeRemainingMinutes > 1 ? 's' : ''}`;
+      } else {
+        timeRemainingFormatted = `${timeRemainingSeconds} second${timeRemainingSeconds > 1 ? 's' : ''}`;
+      }
+      
+      return { 
+        shouldBlock: true, 
+        timeRemaining: timeRemainingFormatted,
+        timeSinceLoss: timeSinceFormatted
+      };
+    }
+    
+    return { shouldBlock: false, timeSinceLoss: timeSinceFormatted };
+  } catch (error) {
+    console.error('Error checking loss time:', error);
+    return { shouldBlock: false };
+  }
+}
+
+// Function to block chess board when the specific flag class exists or due to recent loss
+async function blockChessBoard() {
   const flagExists = !!document.querySelector('.country-flags-component.country-75.country-flags-small');
   const boardElement = document.querySelector('#board-single') as HTMLElement | null;
   const existingOverlay = document.getElementById('chess-blocker-overlay') as HTMLDivElement | null;
-
-  if (!flagExists || !boardElement) {
+  
+  // Check if we should block due to recent loss
+  const lossCheck = await shouldBlockDueToLoss();
+  const shouldBlockForLoss = lossCheck.shouldBlock;
+  
+  if ((!flagExists && !shouldBlockForLoss) || !boardElement) {
     if (existingOverlay) existingOverlay.remove();
     return;
   }
@@ -168,7 +237,16 @@ function blockChessBoard() {
     overlay.style.pointerEvents = 'all';
     overlay.style.userSelect = 'none';
     overlay.style.cursor = 'not-allowed';
-    overlay.textContent = 'Are you sure you want to continue with this match?';
+    
+    // Set message based on blocking reason
+    if (shouldBlockForLoss) {
+      const timeRemaining = lossCheck.timeRemaining || 'some time';
+      const timeSinceLoss = lossCheck.timeSinceLoss || 'recently';
+      overlay.innerHTML = `<div>You lost ${timeSinceLoss} ago.<br/>Please wait ${timeRemaining} more before playing.</div>`;
+    } else {
+      overlay.textContent = 'Are you sure you want to continue with this match?';
+    }
+    
     document.body.appendChild(overlay);
   }
 
@@ -194,7 +272,7 @@ function blockChessBoard() {
 async function startMonitoring() {
   // Initial check
   await hideTimeControlButtons();
-  blockChessBoard();
+  await blockChessBoard();
   await checkResignIcon();
   await checkGameResult();
   
@@ -247,7 +325,7 @@ async function startMonitoring() {
   // Also check periodically in case the observer misses something
   setInterval(async () => {
     await hideTimeControlButtons();
-    blockChessBoard();
+    await blockChessBoard();
     await checkResignIcon();
     await checkGameResult();
   }, 2000);
