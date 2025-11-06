@@ -208,7 +208,17 @@ async function shouldBlockDueToLoss(): Promise<{ shouldBlock: boolean; timeRemai
 
 // Function to block chess board when the specific flag class exists or due to recent loss
 async function blockChessBoard() {
-  const flagExists = !!document.querySelector('.country-flags-component.country-il.country-flags-small');
+  // Check for any country flag component (matches country-XX pattern where XX is any country code)
+  // Supports both numeric codes (e.g., country-75) and text codes (e.g., country-il)
+  // Also supports both small and medium flag sizes
+  const flagElements = document.querySelectorAll('.country-flags-component');
+  const flagExists = Array.from(flagElements).some((el) => {
+    // Check if element has a country class (country-XX pattern, where XX can be numbers or letters)
+    // and has either small or medium size class
+    const hasCountryCode = Array.from(el.classList).some((cls) => /^country-[a-zA-Z0-9]+$/.test(cls));
+    const hasSizeClass = el.classList.contains('country-flags-small') || el.classList.contains('country-flags-medium');
+    return hasCountryCode && hasSizeClass;
+  });
   const boardElement = document.querySelector('#board-single') as HTMLElement | null;
   const existingOverlay = document.getElementById('chess-blocker-overlay') as HTMLDivElement | null;
   
